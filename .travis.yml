@@ -1,0 +1,9 @@
+services:
+  - docker
+
+sudo: false
+
+script: |
+  set -x; \
+  travis_wait 30 docker build -t insomniacslk/osf-build -f Dockerfile . &&
+  docker run --rm -i insomniacslk/osf-build
