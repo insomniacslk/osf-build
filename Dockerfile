@@ -7,6 +7,8 @@ FROM uroottest/test-image-amd64:v3.2.4
 # Install dependencies
 RUN sudo apt-get update &&                          \
 	sudo apt-get install -y --no-install-recommends \
+		`# libraries used by vpd`                   \
+		uuid-dev                                    \
 		`# tools for creating bootable disk images` \
 		gdisk \
 		e2fsprogs \
@@ -28,7 +30,7 @@ RUN set -x; \
 	sudo chmod -R a+w /go/src && \
 	cd /go/src/github.com/systemboot/systemboot && \
 	go get -v ./...  && \
-	u-root -o ~/initramfs.linux_amd64.cpio -build=bb core uinit localboot netboot && \
+	u-root -o ~/initramfs.linux_amd64.cpio -build=bb core uinit localboot netboot cmds/fixmynetboot && \
 	xz --check=crc32 --lzma2=dict=512KiB ~/initramfs.linux_amd64.cpio
 
 # Get Linux kernel
@@ -53,15 +55,30 @@ RUN set -x; \
 	git config --global user.email "osf-build@example.org" && \
 	git config --global user.name "OSF Build"
 
+# install vpd, required later to write boot entries
 RUN set -x; \
-	git clone -b 4.9 https://review.coreboot.org/coreboot.git && \
+	git clone https://chromium.googlesource.com/chromiumos/platform/vpd && \
+	( \
+		cd vpd && \
+		make ) && \
+	cp vpd/vpd_s ~/vpd_s
+
+RUN set -x; \
+	git clone https://review.coreboot.org/coreboot.git && \
 	mv coreboot-config coreboot/.config && \
 	mv qemu.fmd coreboot/ && \
 	( \
 		cd coreboot && \
+		`# fetch qemu-vpd patch` \
+		git fetch https://review.coreboot.org/coreboot refs/changes/87/32087/6 && \
+		git cherry-pick FETCH_HEAD && \
 		BUILD_LANGUAGES=c CPUS=$(nproc) make crossgcc-i386 && \
 		make oldconfig && \
 		make) && \
+	`# create RO_VPD partition with boot entries` \
+	~/vpd_s -f coreboot/build/coreboot.rom -i RO_VPD -O && \
+	~/vpd_s -f coreboot/build/coreboot.rom -i RO_VPD -s 'Boot0000={"type":"netboot","method":"dhcpv6", "debug_on_failure": true}' && \
+	~/vpd_s -f coreboot/build/coreboot.rom -i RO_VPD -s 'Boot0001={"type":"localboot","method":"grub"}' && \
 	cp coreboot/build/coreboot.rom . && \
 	rm -r coreboot/
 
