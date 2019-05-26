@@ -5,5 +5,5 @@ sudo: false
 
 script: |
   set -x; \
-  travis_wait 60 docker build -t insomniacslk/osf-build -f Dockerfile . &&
-  docker run --rm -i insomniacslk/osf-build
+  travis_wait 60 docker build -t insomniacslk/osf-build -f Dockerfile . && \
+  `# docker run --rm -i insomniacslk/osf-build`
