@@ -24,10 +24,10 @@ ENV PATH "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/go/bin:/
 # Get u-root
 RUN go get github.com/u-root/u-root/...
 RUN go get github.com/systemboot/systemboot/...
+RUN sudo chmod -R a+w /go/src
 
 # build the initramfs with u-root and systemboot
 RUN set -x; \
-	sudo chmod -R a+w /go/src && \
 	cd /go/src/github.com/systemboot/systemboot && \
 	go get -v ./...  && \
 	u-root -o ~/initramfs.linux_amd64.cpio -build=bb core uinit localboot netboot cmds/fixmynetboot && \
@@ -82,11 +82,16 @@ RUN set -x; \
 	cp coreboot/build/coreboot.rom . && \
 	rm -r coreboot/
 
-# Create a bootable disk image to test localboot; the init there simply shuts down.
+# Create a bootable disk image to test localboot; the init just prints a banner
+COPY uinit/* /go/src/uinit/
+RUN sudo chmod -R a+w /go/src/uinit
+
 RUN set -x; \
 	mkdir rootfs && \
 	cp bzImage rootfs/ && \
-	u-root -build=bb -o rootfs/ramfs.cpio -initcmd shutdown  && \
+	u-root -build=bb -o rootfs/ramfs.cpio \
+		core \
+		uinit  && \
 	xz --check=crc32 --lzma2=dict=512KiB rootfs/ramfs.cpio && \
 	{ \
 		echo menuentry; \
@@ -100,8 +105,7 @@ RUN set -x; \
 	mkfs.ext2 -F -E 'offset=1048576' -d rootfs/ disk.img 18m && \
 	gdisk -l disk.img && \
 	qemu-img convert -f raw -O qcow2 disk.img disk.qcow2 && \
-	mv disk.qcow2 disk.img && \
-	rm -r rootfs/
+	mv disk.qcow2 disk.img
 
 CMD ./qemu-system-x86_64 \
 	-M q35 \
