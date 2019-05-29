@@ -1,0 +1,21 @@
+# {docker build -t insomniacslk/osf-build-dhcp-server -f Dockerfile.dhcp-server .}
+
+FROM debian:stable
+
+# Install dependencies
+RUN apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install \
+    -y --no-install-recommends \
+    sudo strace \
+    ca-certificates \
+    libreadline5 build-essential autoconf automake \
+    tcpdump tshark \
+    kea-dhcp6-server radvd \
+    git
+COPY config/kea6.conf .
+COPY config/radvd.conf .
+RUN mkdir kea
+
+CMD set -x; \
+    radvd -C radvd.conf && \
+    /usr/sbin/kea-dhcp6 -c kea6.conf
