@@ -12,9 +12,14 @@ RUN sudo apt-get update &&                          \
 		`# tools for creating bootable disk images` \
 		gdisk \
 		e2fsprogs \
-		qemu-utils \
+		qemu-utils qemu-system-common \
 		patch \
+		strace \
+		kmod \
 		tar \
+		iptables isc-dhcp-client \
+		bridge-utils uml-utilities \
+		tcpdump tshark \
 		&& \
 	sudo rm -rf /var/lib/apt/lists/*
 
@@ -35,9 +40,9 @@ RUN set -x; \
 
 # Get Linux kernel
 #
-# Config taken from:
-#   https://raw.githubusercontent.com/linuxboot/demo/master/20190203-FOSDEM-barberio-hendricks/config/linux-config
-COPY linux-config .
+# Config based on the coreboot chapter of the LinuxBoot Book,
+# https://github.com/linuxboot/book .
+COPY config/linux-config .
 
 RUN set -x; \
 	git clone -q --depth 1 -b v4.19 https://github.com/torvalds/linux.git && \
@@ -47,8 +52,8 @@ RUN set -x; \
 	rm -r linux/
 
 # Config files from https://github.com/linuxboot/demo/blob/master/20190203-FOSDEM-barberio-hendricks/config/
-COPY coreboot-config .
-COPY qemu.fmd .
+COPY config/coreboot-config .
+COPY config/qemu.fmd .
 
 # required to cherry-pick
 RUN set -x; \
@@ -107,12 +112,35 @@ RUN set -x; \
 	qemu-img convert -f raw -O qcow2 disk.img disk.qcow2 && \
 	mv disk.qcow2 disk.img
 
-CMD ./qemu-system-x86_64 \
-	-M q35 \
-	-L pc-bios/ `# for vga option rom` \
-	-bios coreboot.rom \
-	-m 1024 \
-	-nographic \
-	-object 'rng-random,filename=/dev/urandom,id=rng0' \
-	-device 'virtio-rng-pci,rng=rng0' \
-	-hda disk.img
+COPY config/bridge.conf /etc/qemu/bridge.conf
+RUN go get github.com/insomniacslk/exdhcp/dhclient/...
+
+ CMD set -x; \
+	sudo ip link add link eth0 name macvtap0 type macvtap mode bridge && \
+	sudo ip link set macvtap0 up && \
+	sudo bash -c './qemu-system-x86_64 \
+		-M q35 \
+		-L pc-bios/ `# for vga option rom` \
+		-bios coreboot.rom \
+		-m 1024 \
+		-nographic \
+		-object 'rng-random,filename=/dev/urandom,id=rng0' \
+		-device 'virtio-rng-pci,rng=rng0' \
+		-net nic,model=e1000,macaddr=$(cat /sys/class/net/macvtap0/address) \
+		-net tap,fd=3 3<>/dev/tap$(cat /sys/class/net/macvtap0/ifindex) \
+		-hda disk.img'
+
+#CMD set -x; \
+#	sudo brctl addbr br0 && \
+#	sudo brctl addif br0 eth0 && \
+#	sudo iptables -I FORWARD -m physdev --physdev-is-bridge -j ACCEPT && \
+#	sudo bash -c './qemu-system-x86_64 \
+#	-M q35 \
+#	-L pc-bios/ `# for vga option rom` \
+#	-bios coreboot.rom \
+#	-m 1024 \
+#	-nographic \
+#	-object 'rng-random,filename=/dev/urandom,id=rng0' \
+#	-device 'virtio-rng-pci,rng=rng0' \
+#	`# -net nic,model=virtio-net-pci -net bridge,br=br0` \
+#	-hda disk.img'
