@@ -23,15 +23,19 @@ ENV PATH "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/go/bin:/
 
 # Get u-root
 RUN go get github.com/u-root/u-root/...
-RUN go get github.com/systemboot/systemboot/...
 RUN sudo chmod -R a+w /go/src
 
-# build the initramfs with u-root and systemboot
+# build the initramfs with u-root and fbnetboot/localboot
 RUN set -x; \
-	cd /go/src/github.com/systemboot/systemboot && \
-	go get -v ./...  && \
-	u-root -o ~/initramfs.linux_amd64.cpio -build=bb core uinit localboot netboot cmds/fixmynetboot && \
-	xz --check=crc32 --lzma2=dict=512KiB ~/initramfs.linux_amd64.cpio
+    cd /go/src/github.com/u-root/u-root && \
+    go get -v -u ./...  && \
+    u-root -o ~/initramfs.linux_amd64.cpio -build=bb \
+        core \
+        github.com/u-root/u-root/cmds/boot/fbnetboot \
+        github.com/u-root/u-root/cmds/boot/localboot \
+        github.com/u-root/u-root/cmds/boot/uinit \
+        github.com/u-root/u-root/examples/fixmynetboot && \
+    xz --check=crc32 --lzma2=dict=512KiB ~/initramfs.linux_amd64.cpio
 
 # Get Linux kernel
 #
@@ -69,9 +73,6 @@ RUN set -x; \
 	mv qemu.fmd coreboot/ && \
 	( \
 		cd coreboot && \
-		`# fetch qemu-vpd patch` \
-		git fetch https://review.coreboot.org/coreboot refs/changes/87/32087/6 && \
-		git cherry-pick FETCH_HEAD && \
 		BUILD_LANGUAGES=c CPUS=$(nproc) make crossgcc-i386 && \
 		make oldconfig && \
 		make) && \
