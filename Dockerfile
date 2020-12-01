@@ -51,7 +51,8 @@ RUN set -x; \
 	mv linux-config linux/.config && \
 	(cd linux/ && make oldconfig && make ) && \
 	cp linux/arch/x86/boot/bzImage bzImage && \
-	rm -r linux/
+	cp linux/.config linux-config && \
+	rm -rf linux/
 
 # Config files from https://github.com/linuxboot/demo/blob/master/20190203-FOSDEM-barberio-hendricks/config/
 COPY coreboot-config .
@@ -84,7 +85,8 @@ RUN set -x; \
 	~/vpd_s -f coreboot/build/coreboot.rom -i RO_VPD -s 'Boot0000={"type":"netboot","method":"dhcpv6", "debug_on_failure": true}' && \
 	~/vpd_s -f coreboot/build/coreboot.rom -i RO_VPD -s 'Boot0001={"type":"localboot","method":"grub"}' && \
 	cp coreboot/build/coreboot.rom . && \
-	rm -r coreboot/
+	cp coreboot/.config coreboot-config && \
+	rm -rf coreboot/
 
 # Create a bootable disk image to test localboot; the init just prints a banner
 COPY uinit/* /go/src/uinit/

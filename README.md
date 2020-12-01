@@ -4,15 +4,15 @@
 
 Docker files to build an [Open System Firmware](https://www.opencompute.org/projects/open-system-firmware) image based on [coreboot](https://coreboot.org) and [LinuxBoot](https://linuxboot.org).
 
-Just run:
+Just run either `docker` or `podman`:
 ```
-docker build -t insomniacslk/osf-build -f Dockerfile .
-docker run --rm -it insomniacslk/osf-build
+podman build -t insomniacslk/osf-build -f Dockerfile .
+podman run --rm -it insomniacslk/osf-build
 ```
 
 You can copy the output files with a command like this:
 ```
-docker run --rm -it --mount type=bind,source="${PWD}"/output,target=/home/circleci/output insomniacslk/osf-build sudo cp coreboot.rom disk.img output/
+podman run --rm -it --mount type=bind,source="${PWD}"/output,target=/home/circleci/output insomniacslk/osf-build sudo cp coreboot.rom disk.img output/
 ```
 
 This will create an `output` directory on the host system, containing
