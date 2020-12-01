@@ -1,8 +1,11 @@
-# {docker build -t insomniacslk/osf-build -f Dockerfile .}
+# docker build -t insomniacslk/osf-build -f Dockerfile .
 
 # based on github.com/systemboot/systemboot/.travis/docker/*
 
-FROM uroottest/test-image-amd64:v3.2.4
+FROM uroottest/test-image-amd64:v3.2.13
+
+LABEL BUILD="docker build -t insomniacslk/osf-build -f Dockerfile ."
+LABEL RUN="docker run --rm -it insomniacslk/osf-build"
 
 # Install dependencies
 RUN sudo apt-get update &&                          \
@@ -33,7 +36,7 @@ RUN set -x; \
         core \
         github.com/u-root/u-root/cmds/boot/fbnetboot \
         github.com/u-root/u-root/cmds/boot/localboot \
-        github.com/u-root/u-root/cmds/boot/uinit \
+        github.com/u-root/u-root/cmds/boot/systemboot \
         github.com/u-root/u-root/examples/fixmynetboot && \
     xz --check=crc32 --lzma2=dict=512KiB ~/initramfs.linux_amd64.cpio
 
