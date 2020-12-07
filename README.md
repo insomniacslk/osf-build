@@ -10,6 +10,9 @@ podman build -t insomniacslk/osf-build -f Dockerfile .
 podman run --rm -it insomniacslk/osf-build
 ```
 
+The last command will run QEmu in `nographics` mode. Remember that you can
+terminate QEmu with `ctrl-a x`.
+
 You can copy the output files with a command like this:
 ```
 podman run --rm -it --mount type=bind,source="${PWD}"/output,target=/home/circleci/output insomniacslk/osf-build sudo cp coreboot.rom disk.img output/
